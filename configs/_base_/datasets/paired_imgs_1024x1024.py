@@ -11,7 +11,7 @@ train_pipeline = [
     dict(
         type='Resize',
         keys=['img_a', 'img_b'],
-        scale=(512, 512),
+        scale=(1024, 1024),
         interpolation='bicubic'),
     dict(type='Flip', keys=['img_a', 'img_b'], direction='horizontal'),
     dict(type='RescaleToZeroOne', keys=['img_a', 'img_b']),
