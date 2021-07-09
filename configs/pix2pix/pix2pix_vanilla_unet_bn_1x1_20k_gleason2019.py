@@ -5,7 +5,7 @@ _base_ = [
 ]
 train_cfg = dict(direction='b2a')
 test_cfg = dict(direction='b2a')
-dataroot = 'data/paired/gleason2019'
+dataroot = 'data/paired/gleason2019/add_he/he_high'
 data = dict(
     train=dict(dataroot=dataroot),
     val=dict(dataroot=dataroot),
@@ -19,19 +19,19 @@ optimizer = dict(
 lr_config = None
 
 # checkpoint saving
-checkpoint_config = dict(interval=10000, save_optimizer=True, by_epoch=False)
+checkpoint_config = dict(interval=2000, save_optimizer=True, by_epoch=False)
 custom_hooks = [
     dict(
         type='MMGenVisualizationHook',
         output_dir='training_samples',
         res_name_list=['fake_b'],
-        interval=5000)
+        interval=1000)
 ]
 runner = None
 use_ddp_wrapper = True
 
 # runtime settings
-total_iters = 80000
+total_iters = 20000
 workflow = [('train', 1)]
 exp_name = 'pix2pix_facades'
 work_dir = f'./work_dirs/experiments/{exp_name}'

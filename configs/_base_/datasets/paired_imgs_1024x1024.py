@@ -35,7 +35,7 @@ test_pipeline = [
     dict(
         type='Resize',
         keys=['img_a', 'img_b'],
-        scale=(512, 512),
+        scale=(1024, 1024),
         interpolation='bicubic'),
     dict(type='RescaleToZeroOne', keys=['img_a', 'img_b']),
     dict(
@@ -51,8 +51,8 @@ test_pipeline = [
 ]
 
 data = dict(
-    samples_per_gpu=1,
-    workers_per_gpu=1,
+    samples_per_gpu=4,
+    workers_per_gpu=4,
     drop_last=True,
     train=dict(
         type=train_dataset_type,
