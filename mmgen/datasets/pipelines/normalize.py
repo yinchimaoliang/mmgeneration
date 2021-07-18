@@ -35,13 +35,25 @@ class Normalize:
         """
         for key in self.keys:
             if isinstance(results[key], list):
-                results[key] = [
-                    mmcv.imnormalize(v, self.mean, self.std, self.to_rgb)
-                    for v in results[key]
-                ]
+                if len(results[key].shape) == 3 and results[key].shape[2] != 3:
+                    for i, v in enumerate(results[key]):
+                        for j in range(results[key].shape[2]):
+                            results[key][i][..., j] = mmcv.imnormalize(
+                                v[..., j], self.mean, self.std)
+                else:
+                    results[key] = [
+                        mmcv.imnormalize(v, self.mean, self.std, self.to_rgb)
+                        for v in results[key]
+                    ]
             else:
-                results[key] = mmcv.imnormalize(results[key], self.mean,
-                                                self.std, self.to_rgb)
+                if len(results[key].shape) == 3 and results[key].shape[2] != 3:
+                    for i in range(results[key].shape[2]):
+                        results[key][..., i] = mmcv.imnormalize(
+                            results[key][..., i], self.mean.mean(),
+                            self.std.mean())
+                else:
+                    results[key] = mmcv.imnormalize(results[key], self.mean,
+                                                    self.std, self.to_rgb)
 
         results['img_norm_cfg'] = dict(
             mean=self.mean, std=self.std, to_rgb=self.to_rgb)

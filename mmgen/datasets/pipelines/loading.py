@@ -146,3 +146,68 @@ class LoadPairedImageFromFile(LoadImageFromFile):
             results['ori_img_b'] = img_b.copy()
 
         return results
+
+
+@PIPELINES.register_module()
+class LoadProbFromFile(LoadImageFromFile):
+    """Load a pair of images from file.
+
+    Each sample contains a pair of images, which are concatenated in the w
+    dimension (a|b). This is a special loading class for generation paired
+    dataset. It loads a pair of images as the common loader does and crops
+    it into two images with the same shape in different domains.
+
+    Required key is "pair_path". Added or modified keys are "pair",
+    "pair_ori_shape", "ori_pair", "img_a", "img_b", "img_a_path",
+    "img_b_path", "img_a_ori_shape", "img_b_ori_shape", "ori_img_a" and
+    "ori_img_b".
+
+    Args:
+        io_backend (str): io backend where images are store. Default: 'disk'.
+        key (str): Keys in results to find corresponding path. Default: 'gt'.
+        flag (str): Loading flag for images. Default: 'color'.
+        channel_order (str): Order of channel, candidates are 'bgr' and 'rgb'.
+            Default: 'bgr'.
+        save_original_img (bool): If True, maintain a copy of the image in
+            `results` dict with name of `f'ori_{key}'`. Default: False.
+        kwargs (dict): Args for file client.
+    """
+
+    def __call__(self, results):
+        """Call function.
+
+        Args:
+            results (dict): A dict containing the necessary information and
+                data for augmentation.
+
+        Returns:
+            dict: A dict containing the processed data and information.
+        """
+        if self.file_client is None:
+            self.file_client = FileClient(self.io_backend, **self.kwargs)
+        filepath = str(results[f'{self.key}_path'])
+        img_bytes = self.file_client.get(filepath)
+        img = mmcv.imfrombytes(img_bytes, flag=self.flag)  # HWC, BGR
+        if img.ndim == 2:
+            img = np.expand_dims(img, axis=2)
+
+        results[self.key] = img
+        results[f'{self.key}_path'] = filepath
+        results[f'{self.key}_ori_shape'] = img.shape
+        if self.save_original_img:
+            results[f'ori_{self.key}'] = img.copy()
+
+        img_a = img
+        img_b = np.load(filepath.replace('png', 'npy'))
+
+        results['img_a'] = img_a
+        results['img_b'] = img_b
+        results['img_a_path'] = filepath
+        results['img_b_path'] = filepath.replace('png', 'npy')
+        results['img_a_ori_shape'] = img_a.shape
+        results['img_b_ori_shape'] = img_b.shape
+        if self.save_original_img:
+            results['ori_img_a'] = img_a.copy()
+            results['ori_img_b'] = img_b.copy()
+
+        return results

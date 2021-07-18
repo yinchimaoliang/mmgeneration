@@ -1,11 +1,11 @@
 _base_ = [
     '../_base_/models/pix2pix_vanilla_unet_bn.py',
-    '../_base_/datasets/paired_imgs_1024x1024.py',
+    '../_base_/datasets/paired_imgs_prob_1024x1024.py',
     '../_base_/default_runtime.py'
 ]
 train_cfg = dict(direction='b2a')
 test_cfg = dict(direction='b2a')
-dataroot = 'data/paired/gleason2019/add_he/he_high'
+dataroot = 'data/paired/gleason2019/add_he/prob'
 data = dict(
     train=dict(dataroot=dataroot),
     val=dict(dataroot=dataroot),
@@ -38,3 +38,5 @@ work_dir = f'./work_dirs/experiments/{exp_name}'
 metrics = dict(
     FID=dict(type='FID', num_images=20, image_shape=(3, 256, 256)),
     IS=dict(type='IS', num_images=20, image_shape=(3, 256, 256)))
+
+model = dict(generator=dict(in_channels=4), discriminator=dict(in_channels=7))

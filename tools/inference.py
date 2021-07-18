@@ -21,7 +21,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Translation demo')
     parser.add_argument('config', help='test config file path')
     parser.add_argument('checkpoint', help='checkpoint file')
-    parser.add_argument('image_path', help='Image file path')
+    parser.add_argument('--image-path', help='Image file path')
     parser.add_argument(
         '--save-path',
         type=str,
@@ -34,11 +34,13 @@ def parse_args():
         '--sample-cfg',
         nargs='+',
         action=DictAction,
+        default=None,
         help='Other customized kwargs for sampling function')
     parser.add_argument(
         '--apply-ann',
         action='store_true',
         help='whether to apply ann on the img')
+    parser.add_argument('--type', default='prob')
 
     args = parser.parse_args()
     return args
@@ -99,25 +101,107 @@ def show_result(img,
     return img
 
 
-def main():
-    args = parse_args()
-    model = init_model(
-        args.config, checkpoint=args.checkpoint, device=args.device)
-
-    if args.sample_cfg is None:
-        args.sample_cfg = dict()
-
-    img_names = os.listdir(args.image_path)
-    # length = len(img_names)
-    # aug_names = ['slide003_core092.png', 'slide003_core045.png',
-    # 'slide005_core051.png', 'slide002_core073.png', 'slide006_core142.png',
-    # 'slide002_core144.png', 'slide007_core005.png', 'slide002_core126.png',
-    # 'slide005_core091.png', 'slide007_core006.png', 'slide005_core073.png',
-    # 'slide007_core016.png', 'slide001_core145.png']
+def inference_prob(cfg,
+                   ckpt,
+                   device,
+                   sample_cfg,
+                   img_path,
+                   save_path,
+                   apply_ann=False):
+    model = init_model(cfg, ckpt, device=device)
+    if sample_cfg is None:
+        sample_cfg = dict()
+    img_names = os.listdir(img_path)
     for img_name in img_names:
         if 'flip' in img_name:
             continue
-        img_whole = mmcv.imread(os.path.join(args.image_path, img_name))
+        if img_name.endswith('png'):
+            img = mmcv.imread(os.path.join(img_path, img_name))
+            ann = np.load(
+                os.path.join(img_path, img_name.replace('png', 'npy')))
+            img_hflip = mmcv.imflip(img, 'horizontal')
+            ann_hflip = np.zeros_like(ann)
+            for i in range(ann.shape[2]):
+                ann_hflip[..., i] = mmcv.imflip(ann[..., i], 'horizontal')
+            img_vflip = mmcv.imflip(img, 'vertical')
+            ann_vflip = np.zeros_like(ann)
+            for i in range(ann.shape[2]):
+                ann_vflip[..., i] = mmcv.imflip(ann[..., i], 'vertical')
+            img_vhflip = mmcv.imflip(img_vflip, 'horizontal')
+            ann_vhflip = np.zeros_like(ann)
+            for i in range(ann.shape[2]):
+                ann_vhflip[..., i] = mmcv.imflip(ann_vflip[..., i],
+                                                 'horizontal')
+            mmcv.imwrite(
+                img_hflip,
+                os.path.join(img_path, img_name.replace('.', '_hflip.')))
+            mmcv.imwrite(
+                img_vflip,
+                os.path.join(img_path, img_name.replace('.', '_vflip.')))
+            mmcv.imwrite(
+                img_vhflip,
+                os.path.join(img_path, img_name.replace('.', '_vhflip.')))
+            np.save(
+                os.path.join(img_path, img_name.replace('.png', '_vflip.npy')),
+                ann_vflip)
+            np.save(
+                os.path.join(img_path, img_name.replace('.png', '_hflip.npy')),
+                ann_hflip)
+            np.save(
+                os.path.join(img_path, img_name.replace('.png',
+                                                        '_vhflip.npy')),
+                ann_vhflip)
+            print(f'{img_name} finished.')
+
+    img_names = os.listdir(img_path)
+    for img_name in img_names:
+        if img_name.endswith('png'):
+            results = sample_img2img_model(model,
+                                           os.path.join(img_path, img_name),
+                                           *sample_cfg)
+            results = (results[:, [2, 1, 0]] + 1.) / 2.
+            # save images
+            mmcv.mkdir_or_exist(os.path.join(save_path, 'images'))
+            mmcv.mkdir_or_exist(
+                os.path.dirname(os.path.join(save_path, 'images', img_name)))
+            utils.save_image(
+                results, os.path.join(save_path, 'images', f'fake_{img_name}'))
+            fake_img = mmcv.imread(
+                os.path.join(save_path, 'images', f'fake_{img_name}'))
+            img = mmcv.imread(os.path.join(img_path, img_name))
+            img = mmcv.imresize_like(img, fake_img)
+            mmcv.imwrite(img, os.path.join(save_path, 'images', img_name))
+            print(f'{img_name} finished.')
+            if apply_ann:
+                # img_vis = show_result(img, ann)
+                fake_img_vis = show_result(fake_img, ann)
+                # mmcv.imwrite(
+                #     img_vis,
+                #     os.path.join(save_path, 'images',
+                #                 f'vis_{img_name}'))
+                mmcv.imwrite(
+                    fake_img_vis,
+                    os.path.join(save_path, 'images', f'fake_vis_{img_name}'))
+        print(f'{img_name} finished.')
+
+
+def inference_normal(cfg,
+                     ckpt,
+                     device,
+                     sample_cfg,
+                     img_path,
+                     save_path,
+                     apply_ann=False):
+    model = init_model(cfg, checkpoint=ckpt, device=device)
+
+    if sample_cfg is None:
+        sample_cfg = dict()
+
+    img_names = os.listdir(img_path)
+    for img_name in img_names:
+        if 'flip' in img_name:
+            continue
+        img_whole = mmcv.imread(os.path.join(img_path, img_name))
         w = img_whole.shape[1]
         ann = img_whole[:, w // 2:, :]
         img = img_whole[:, :w // 2, :]
@@ -129,66 +213,67 @@ def main():
         img_vhflip = mmcv.imflip(img_vflip, 'horizontal')
         img_whole[:, w // 2:, :] = ann_hflip
         img_whole[:, :w // 2, :] = img_hflip
-        mmcv.imwrite(
-            img_whole,
-            os.path.join(args.image_path, img_name.replace('.', '_hflip.')))
+        mmcv.imwrite(img_whole,
+                     os.path.join(img_path, img_name.replace('.', '_hflip.')))
         img_whole[:, w // 2:, :] = ann_vflip
         img_whole[:, :w // 2, :] = img_vflip
-        mmcv.imwrite(
-            img_whole,
-            os.path.join(args.image_path, img_name.replace('.', '_vflip.')))
+        mmcv.imwrite(img_whole,
+                     os.path.join(img_path, img_name.replace('.', '_vflip.')))
         img_whole[:, w // 2:, :] = ann_vhflip
         img_whole[:, :w // 2, :] = img_vhflip
-        mmcv.imwrite(
-            img_whole,
-            os.path.join(args.image_path, img_name.replace('.', '_vhflip.')))
-    #     aug_names.append(img_name.replace('.', '_vflip.'))
-    #     aug_names.append(img_name.replace('.', '_hflip.'))
-    #     aug_names.append(img_name.replace('.', '_vhflip.'))
-    # print(aug_names)
-    # img_names = img_names + aug_names
-    img_names = os.listdir(args.image_path)
-    for i, img_name in enumerate(img_names):
-        img = mmcv.imread(os.path.join(args.image_path, img_name))
+        mmcv.imwrite(img_whole,
+                     os.path.join(img_path, img_name.replace('.', '_vhflip.')))
+    img_names = os.listdir(img_path)
+    for _, img_name in enumerate(img_names):
+        img = mmcv.imread(os.path.join(img_path, img_name))
         w = img.shape[1]
         ann = img[:, w // 2:, 0]
         img = img[:, :w // 2, :]
 
-        results = sample_img2img_model(model,
-                                       os.path.join(args.image_path, img_name),
-                                       *args.sample_cfg)
+        results = sample_img2img_model(model, os.path.join(img_path, img_name),
+                                       *sample_cfg)
         results = (results[:, [2, 1, 0]] + 1.) / 2.
         # save images
-        mmcv.mkdir_or_exist(os.path.join(args.save_path, 'images'))
-        mmcv.mkdir_or_exist(os.path.join(args.save_path, 'annotations'))
+        mmcv.mkdir_or_exist(os.path.join(save_path, 'images'))
+        mmcv.mkdir_or_exist(os.path.join(save_path, 'annotations'))
         mmcv.mkdir_or_exist(
-            os.path.dirname(os.path.join(args.save_path, 'images', img_name)))
-        utils.save_image(
-            results, os.path.join(args.save_path, 'images',
-                                  f'fake_{img_name}'))
+            os.path.dirname(os.path.join(save_path, 'images', img_name)))
+        utils.save_image(results,
+                         os.path.join(save_path, 'images', f'fake_{img_name}'))
         fake_img = mmcv.imread(
-            os.path.join(args.save_path, 'images', f'fake_{img_name}'))
+            os.path.join(save_path, 'images', f'fake_{img_name}'))
         ann = mmcv.imresize(ann, (fake_img.shape[1], fake_img.shape[0]))
         img = mmcv.imresize(img, (fake_img.shape[1], fake_img.shape[0]))
         mmcv.imwrite(
-            ann, os.path.join(args.save_path, 'annotations',
-                              f'fake_{img_name}'))
+            ann, os.path.join(save_path, 'annotations', f'fake_{img_name}'))
         # mmcv.imwrite(
         #     img,
-        #     os.path.join(args.save_path, 'images',
+        #     os.path.join(save_path, 'images',
         #                  f'{img_name}'))
 
-        if args.apply_ann:
+        if apply_ann:
             # img_vis = show_result(img, ann)
             fake_img_vis = show_result(fake_img, ann)
             # mmcv.imwrite(
             #     img_vis,
-            #     os.path.join(args.save_path, 'images',
+            #     os.path.join(save_path, 'images',
             #                 f'vis_{img_name}'))
             mmcv.imwrite(
                 fake_img_vis,
-                os.path.join(args.save_path, 'images', f'fake_vis_{img_name}'))
+                os.path.join(save_path, 'images', f'fake_vis_{img_name}'))
         print(f'{img_name} finished.')
+
+
+def main():
+    args = parse_args()
+    if args.type == 'prob':
+        inference_prob(args.config, args.checkpoint, args.device,
+                       args.sample_cfg, args.image_path, args.save_path,
+                       args.apply_ann)
+    elif args.type == 'normal':
+        inference_normal(args.config, args.checkpoint, args.device,
+                         args.sample_cfg, args.image_path, args.save_path,
+                         args.apply_ann)
 
 
 if __name__ == '__main__':
