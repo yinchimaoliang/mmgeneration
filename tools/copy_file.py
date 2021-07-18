@@ -1,4 +1,7 @@
 import argparse
+import os
+import random
+import shutil
 
 
 def parse_args():
@@ -14,14 +17,27 @@ def parse_args():
     return args
 
 
-def main():
-    pass
-    # args = parse_args()
-    # origin_path = args.origin_path
-    # target_path = args.target_path
-    # folders = args.folders
+def cpy_files(origin_path, target_path, folders):
+    names = os.listdir(os.path.join(origin_path, 'voted', 'images'))
+    for name in names:
+        file_paths = []
+        for folder in folders:
+            file_paths.append(
+                os.path.join(origin_path, folder, 'images', name))
+        random.shuffle(file_paths)
+        shutil.copyfile(file_paths[0], os.path.join(target_path, 'images',
+                                                    name))
+        print(f'{name} finished')
 
-    # cpy_files(origin_path, target_path, folders)
+
+def main():
+    # pass
+    args = parse_args()
+    origin_path = args.origin_path
+    target_path = args.target_path
+    folders = args.folders
+
+    cpy_files(origin_path, target_path, folders)
 
 
 if __name__ == '__main__':
