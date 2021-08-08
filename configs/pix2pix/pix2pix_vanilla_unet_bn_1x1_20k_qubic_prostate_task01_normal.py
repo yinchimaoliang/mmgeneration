@@ -4,7 +4,7 @@ _base_ = [
 ]
 train_cfg = dict(direction='b2a')
 test_cfg = dict(direction='b2a')
-dataroot = 'data/paired/qubic/prostate/voted'
+dataroot = 'data/paired/qubic/prostate/task01/voted'
 data = dict(
     train=dict(dataroot=dataroot),
     val=dict(dataroot=dataroot),

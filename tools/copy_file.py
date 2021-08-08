@@ -10,7 +10,7 @@ def parse_args():
     parser.add_argument('--target-path', help='Target data path.')
     parser.add_argument(
         '--folders',
-        default=['he_high', 'Maps1_T', 'Maps3_T', 'Maps4_T'],
+        default=['seg01', 'seg02', 'seg04'],
         help='Target data path.')
     args = parser.parse_args()
 
