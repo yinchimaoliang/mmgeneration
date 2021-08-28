@@ -14,7 +14,7 @@ def parse_args():
     parser.add_argument(
         '--ann-folders',
         type=list,
-        default=['Maps1_T', 'Maps3_T', 'Maps4_T', 'he_high'],
+        default=['Maps1_T', 'Maps3_T', 'Maps4_T'],
         help='Annotation folders')
     parser.add_argument(
         '--num-classes', type=int, default=4, help='Number of classes.')
@@ -34,8 +34,11 @@ def gen_label(train_path, valid_path, test_path, target_path):
     test_names = os.listdir(osp.join(test_path, 'images'))
     for train_name in train_names:
         img_a = mmcv.imread(osp.join(train_path, 'images', train_name))
-        img_b = mmcv.imread(
-            osp.join(train_path, 'task02', 'annotations', train_name))
+        img_a = mmcv.imresize(img_a,
+                              (img_a.shape[1] // 5, img_a.shape[0] // 5))
+        img_b = mmcv.imread(osp.join(train_path, 'annotations', train_name))
+        img_b = mmcv.imresize(img_b,
+                              (img_b.shape[1] // 5, img_b.shape[0] // 5))
         assert img_a.shape == img_b.shape
         h = img_a.shape[0]
         w = img_a.shape[1]
@@ -46,8 +49,7 @@ def gen_label(train_path, valid_path, test_path, target_path):
         print(f'{train_name} finished')
     for valid_name in valid_names:
         img_a = mmcv.imread(osp.join(valid_path, 'images', valid_name))
-        img_b = mmcv.imread(
-            osp.join(valid_path, 'task02', 'annotations', valid_name))
+        img_b = mmcv.imread(osp.join(valid_path, 'annotations', valid_name))
         assert img_a.shape == img_b.shape
         h = img_a.shape[0]
         w = img_a.shape[1]
@@ -58,8 +60,7 @@ def gen_label(train_path, valid_path, test_path, target_path):
         print(f'{valid_name} finished')
     for test_name in test_names:
         img_a = mmcv.imread(osp.join(test_path, 'images', test_name))
-        img_b = mmcv.imread(
-            osp.join(test_path, 'task02', 'annotations', test_name))
+        img_b = mmcv.imread(osp.join(test_path, 'annotations', test_name))
         assert img_a.shape == img_b.shape
         h = img_a.shape[0]
         w = img_a.shape[1]

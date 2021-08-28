@@ -5,7 +5,7 @@ _base_ = [
 ]
 train_cfg = dict(direction='b2a')
 test_cfg = dict(direction='b2a')
-dataroot = 'data/paired/gleason2019/add_he/Maps4_T'
+dataroot = 'data/paired/gleason2019'
 data = dict(
     train=dict(dataroot=dataroot),
     val=dict(dataroot=dataroot),
